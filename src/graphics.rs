@@ -230,6 +230,8 @@ impl Graphics {
 
                 if mode == "on-demand" {
                     "hybrid".to_string()
+                } else if mode == "off" {
+                    "compute".to_string()
                 } else {
                     "nvidia".to_string()
                 }
@@ -248,6 +250,7 @@ impl Graphics {
         } else if vendor == "nvidia" {
             "on\n"
         } else {
+            // Integrated or Compute
             "off\n"
         };
 
@@ -264,7 +267,7 @@ impl Graphics {
                 .open(MODPROBE_PATH)
                 .map_err(GraphicsDeviceError::ModprobeFileOpen)?;
 
-            let text = if vendor == "hybrid" {
+            let text = if vendor == "hybrid" || vendor == "compute" {
                 MODPROBE_HYBRID
             } else if vendor == "nvidia" {
                 MODPROBE_NVIDIA
@@ -326,6 +329,8 @@ impl Graphics {
         } else {
             info!("Disabling graphics power");
 
+            // TODO: Don't allow turning off power while NVIDIA drivers are loaded.
+
             unsafe {
                 // Unbind NVIDIA graphics devices and their functions
                 let unbinds = self.nvidia.iter().map(|dev| dev.unbind());
@@ -342,7 +347,7 @@ impl Graphics {
 
     pub fn auto_power(&self) -> Result<(), GraphicsDeviceError> {
         let vendor = self.get_vendor()?;
-        self.set_power(vendor == "nvidia" || vendor == "hybrid")
+        self.set_power(vendor != "integrated")
     }
 
     fn switchable_or_fail(&self) -> Result<(), GraphicsDeviceError> {
